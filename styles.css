@@ -1,0 +1,105 @@
+/* Custom Styles for TeamFlow */
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Kanban Cards & Drag-and-Drop */
+.kanban-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+  user-select: none;
+  cursor: grab;
+}
+
+.kanban-card:active {
+  cursor: grabbing;
+}
+
+.kanban-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+}
+
+.kanban-card.is-dragging {
+  opacity: 0.4;
+  transform: scale(0.96) rotate(1deg);
+  border: 2px dashed #6366f1;
+}
+
+/* Dropzone hover highlight */
+.cards-container.drag-over {
+  background-color: rgba(99, 102, 241, 0.08);
+  border-radius: 12px;
+  outline: 2px dashed #6366f1;
+  outline-offset: -2px;
+}
+
+/* Priority Badges */
+.badge-urgent {
+  background-color: #ffe4e6;
+  color: #e11d48;
+  border: 1px solid #fecdd3;
+}
+
+.badge-high {
+  background-color: #ffedd5;
+  color: #ea580c;
+  border: 1px solid #fed7aa;
+}
+
+.badge-medium {
+  background-color: #fef3c7;
+  color: #d97706;
+  border: 1px solid #fde68a;
+}
+
+.badge-low {
+  background-color: #f0fdf4;
+  color: #16a34a;
+  border: 1px solid #bbf7d0;
+}
+
+/* Modal Animations */
+@keyframes scaleUp {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-up {
+  animation: scaleUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Pulse animation for Overdue tasks */
+@keyframes urgentPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse-urgent {
+  animation: urgentPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

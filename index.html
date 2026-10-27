@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TeamFlow - ระบบจัดการงานและติดตามภาพรวมทีม (Team Todo & Kanban)</title>
+  <!-- Google Fonts: Prompt -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Prompt', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              200: '#c7d2fe',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16 gap-4">
+        
+        <!-- Brand Logo & App Title -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-100">
+            <i data-lucide="kanban" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-lg text-slate-900 tracking-tight">TeamFlow</span>
+              <span id="role-badge" class="px-2 py-0.5 text-xs font-semibold rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                👑 โหมดหัวหน้างาน
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 hidden sm:block">ระบบติดตามงานและภาพรวมทีม (Team Kanban & Overview)</p>
+          </div>
+        </div>
+
+        <!-- Quick Summary Stats in Nav (Desktop) -->
+        <div class="hidden lg:flex items-center gap-6 text-xs text-slate-600 bg-slate-100/70 px-4 py-1.5 rounded-xl border border-slate-200/60">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-indigo-500"></span>
+            <span>ทั้งหมด: <strong id="nav-total-tasks" class="text-slate-800">0</strong></span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            <span>กำลังทำ: <strong id="nav-doing-tasks" class="text-slate-800">0</strong></span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>เสร็จแล้ว: <strong id="nav-done-tasks" class="text-slate-800">0</strong></span>
+          </div>
+          <div class="flex items-center gap-1.5 text-rose-600 font-medium">
+            <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+            <span>เลยกำหนด: <strong id="nav-overdue-tasks">0</strong></span>
+          </div>
+        </div>
+
+        <!-- Role Selector & Actions -->
+        <div class="flex items-center gap-3">
+          
+          <!-- Role / User Switcher Dropdown -->
+          <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <label for="user-selector" class="text-xs font-medium text-slate-500 pl-2 hidden sm:inline flex items-center gap-1">
+              <i data-lucide="user-check" class="w-3.5 h-3.5"></i> สลับมุมมอง:
+            </label>
+            <select id="user-selector" class="bg-white border border-slate-200 text-slate-800 text-xs sm:text-sm rounded-lg px-2.5 py-1.5 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-sm">
+              <option value="manager">👑 หัวหน้างาน (ดูภาพรวมทุกคน)</option>
+              <!-- Team members will be injected dynamically -->
+            </select>
+          </div>
+
+          <!-- Add Task Button -->
+          <button id="btn-open-create-task" class="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-medium px-3.5 py-2 rounded-xl shadow-sm transition active:scale-95">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">สร้างงานใหม่</span>
+            <span class="sm:hidden">สร้าง</span>
+          </button>
+
+          <!-- Settings / Demo Data Menu Button -->
+          <button id="btn-toggle-options" title="จัดการข้อมูลตัวอย่าง / สำรองข้อมูล" class="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition">
+            <i data-lucide="settings" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- OPTIONS / DATA MANAGEMENT DRAWER (HIDDEN BY DEFAULT) -->
+  <div id="options-panel" class="hidden bg-white border-b border-slate-200 px-4 py-3 text-xs sm:text-sm shadow-inner transition-all">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2 text-slate-600">
+        <i data-lucide="database" class="w-4 h-4 text-indigo-500"></i>
+        <span>การจัดการข้อมูลระบบ (ข้อมูลถูกบันทึกอัตโนมัติใน LocalStorage ของเบราว์เซอร์นี้)</span>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <button id="btn-manage-members" class="px-2.5 py-1 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-1">
+          <i data-lucide="users" class="w-3.5 h-3.5"></i> จัดการรายชื่อสมาชิกทีม
+        </button>
+        <button id="btn-export-data" class="px-2.5 py-1 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-1">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i> ส่งออก JSON
+        </button>
+        <button id="btn-import-data-trigger" class="px-2.5 py-1 rounded-lg border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium flex items-center gap-1">
+          <i data-lucide="upload" class="w-3.5 h-3.5"></i> นำเข้า JSON
+        </button>
+        <input type="file" id="file-import-input" accept=".json" class="hidden" />
+        <button id="btn-reset-demo" class="px-2.5 py-1 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 font-medium flex items-center gap-1">
+          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> รีเซ็ตเป็นข้อมูลตัวอย่าง
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- VIEW BANNER / CONTEXT -->
+    <div id="view-banner" class="mb-6 p-4 rounded-2xl bg-gradient-to-r from-indigo-900 to-slate-900 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div class="flex items-center gap-4">
+        <div id="banner-avatar" class="w-12 h-12 rounded-2xl bg-indigo-500/30 border border-indigo-400/40 flex items-center justify-center text-xl font-bold">
+          👑
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 id="banner-title" class="text-xl font-bold tracking-tight">หน้าหัวหน้างาน: ภาพรวมงานของทั้งทีม</h1>
+            <span id="banner-status-tag" class="text-xs bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 px-2 py-0.5 rounded-full">Overview Mode</span>
+          </div>
+          <p id="banner-desc" class="text-xs sm:text-sm text-slate-300 mt-0.5">
+            คุณสามารถติดตามความคืบหน้าของทุกคน มอบหมายงาน และเห็นสถานะงานที่ใกล้ถึงกำหนดส่ง
+          </p>
+        </div>
+      </div>
+
+      <!-- Action in banner: Switch between views or quick search -->
+      <div class="flex items-center gap-3">
+        <div class="relative w-full md:w-64">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+          <input type="text" id="search-input" placeholder="ค้นหาชื่องาน, รายละเอียด..." class="w-full bg-slate-800/80 border border-slate-700 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-400">
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- SECTION 1: MANAGER DASHBOARD (Visible in Manager Mode) -->
+    <!-- ============================================== -->
+    <section id="manager-section" class="space-y-6">
+      
+      <!-- Metrics Cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Card 1: Total Tasks -->
+        <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-500 font-medium">งานทั้งหมดของทีม</p>
+            <h3 id="stat-total-tasks" class="text-2xl font-bold text-slate-800 mt-1">0</h3>
+            <span class="text-[11px] text-slate-400">งานที่บันทึกในระบบ</span>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <i data-lucide="layers" class="w-6 h-6"></i>
+          </div>
+        </div>
+
+        <!-- Card 2: In Progress -->
+        <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-500 font-medium">กำลังดำเนินการ</p>
+            <h3 id="stat-doing-tasks" class="text-2xl font-bold text-amber-600 mt-1">0</h3>
+            <span class="text-[11px] text-amber-600/80 font-medium">สมาชิกกำลังทำอยู่</span>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+            <i data-lucide="loader" class="w-6 h-6 animate-spin"></i>
+          </div>
+        </div>
+
+        <!-- Card 3: Completed -->
+        <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-500 font-medium">เสร็จสิ้นแล้ว</p>
+            <h3 id="stat-done-tasks" class="text-2xl font-bold text-emerald-600 mt-1">0</h3>
+            <span id="stat-completion-rate" class="text-[11px] text-emerald-600 font-medium">0% สำเร็จ</span>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+          </div>
+        </div>
+
+        <!-- Card 4: Overdue & Critical -->
+        <div class="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-500 font-medium">เลยกำหนด / ใกล้ถึงกำหนด</p>
+            <h3 id="stat-alert-tasks" class="text-2xl font-bold text-rose-600 mt-1">0</h3>
+            <span id="stat-overdue-desc" class="text-[11px] text-rose-500 font-medium">ต้องเร่งติดตาม</span>
+          </div>
+          <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center">
+            <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Team Workload & Members Grid -->
+      <div class="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+              <i data-lucide="users" class="w-5 h-5 text-indigo-600"></i>
+              ภาระงานของทีมงานแต่ละคน (Team Workload)
+            </h2>
+            <p class="text-xs text-slate-500">คลิกที่การ์ดลูกทีมเพื่อสลับไปดูหน้า Kanban ของคนนั้นได้ทันที</p>
+          </div>
+          <button id="btn-add-member" class="text-xs text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100">
+            <i data-lucide="user-plus" class="w-4 h-4"></i> เพิ่มลูกทีม
+          </button>
+        </div>
+
+        <!-- Member workload cards container -->
+        <div id="members-workload-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <!-- Injected via JavaScript -->
+        </div>
+      </div>
+
+      <!-- Manager View Controls (Filter by Member & Display Mode) -->
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-xs font-semibold text-slate-500 flex items-center gap-1">
+            <i data-lucide="filter" class="w-3.5 h-3.5"></i> กรองแสดงผล:
+          </span>
+          <select id="filter-member" class="bg-slate-50 border border-slate-200 text-xs rounded-lg px-2.5 py-1.5 font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="all">ทุกคนในทีม (All Members)</option>
+            <!-- Member options injected -->
+          </select>
+          <select id="filter-priority" class="bg-slate-50 border border-slate-200 text-xs rounded-lg px-2.5 py-1.5 font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="all">ระดับความสำคัญทั้งหมด</option>
+            <option value="urgent">🔴 ด่วนมาก (Urgent)</option>
+            <option value="high">🟠 สูง (High)</option>
+            <option value="medium">🟡 ปานกลาง (Medium)</option>
+            <option value="low">🟢 ทั่วไป (Low)</option>
+          </select>
+          <select id="filter-deadline" class="bg-slate-50 border border-slate-200 text-xs rounded-lg px-2.5 py-1.5 font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="all">กำหนดส่งทั้งหมด</option>
+            <option value="overdue">⚠️ เลยกำหนดส่ง (Overdue)</option>
+            <option value="today">⏰ ส่งวันนี้ (Due Today)</option>
+            <option value="week">📅 ส่งในสัปดาห์นี้</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-1.5 self-end sm:self-auto">
+          <span class="text-xs text-slate-400 font-medium mr-1">มุมมอง:</span>
+          <button id="view-mode-kanban" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-indigo-600 text-white shadow-xs flex items-center gap-1">
+            <i data-lucide="trello" class="w-3.5 h-3.5"></i> บอร์ดคัมบัง
+          </button>
+          <button id="view-mode-table" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center gap-1">
+            <i data-lucide="list" class="w-3.5 h-3.5"></i> ตารางรายการ
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============================================== -->
+    <!-- SECTION 2: KANBAN BOARD (For both Manager and Member) -->
+    <!-- ============================================== -->
+    <section id="kanban-section" class="mt-4">
+      
+      <!-- Kanban Columns Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-start">
+        
+        <!-- Column 1: To Do -->
+        <div class="kanban-column bg-slate-100/90 rounded-2xl p-3 border border-slate-200/80 shadow-xs flex flex-col max-h-[calc(100vh-240px)] min-h-[420px]" data-status="todo">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+              <h3 class="font-bold text-sm text-slate-700">รอดำเนินการ (To Do)</h3>
+            </div>
+            <span id="count-todo" class="px-2 py-0.5 text-xs font-semibold rounded-full bg-slate-200 text-slate-700">0</span>
+          </div>
+          <!-- Cards drop zone -->
+          <div class="cards-container flex-1 overflow-y-auto space-y-2.5 p-1 pr-1.5" id="column-todo">
+            <!-- Cards rendered dynamically -->
+          </div>
+          <!-- Quick Add in Column -->
+          <button class="btn-quick-add mt-2 w-full py-1.5 text-xs text-slate-500 hover:text-indigo-600 hover:bg-white rounded-xl border border-dashed border-slate-300 transition flex items-center justify-center gap-1" data-status="todo">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i> เพิ่มงานในคอลัมน์นี้
+          </button>
+        </div>
+
+        <!-- Column 2: In Progress -->
+        <div class="kanban-column bg-amber-50/50 rounded-2xl p-3 border border-amber-200/60 shadow-xs flex flex-col max-h-[calc(100vh-240px)] min-h-[420px]" data-status="in_progress">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-amber-200/70">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+              <h3 class="font-bold text-sm text-amber-900">กำลังทำ (In Progress)</h3>
+            </div>
+            <span id="count-in_progress" class="px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-200/70 text-amber-800">0</span>
+          </div>
+          <div class="cards-container flex-1 overflow-y-auto space-y-2.5 p-1 pr-1.5" id="column-in_progress">
+            <!-- Cards rendered dynamically -->
+          </div>
+          <button class="btn-quick-add mt-2 w-full py-1.5 text-xs text-amber-700/70 hover:text-amber-800 hover:bg-amber-100/60 rounded-xl border border-dashed border-amber-300 transition flex items-center justify-center gap-1" data-status="in_progress">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i> เพิ่มงานในคอลัมน์นี้
+          </button>
+        </div>
+
+        <!-- Column 3: Review -->
+        <div class="kanban-column bg-indigo-50/50 rounded-2xl p-3 border border-indigo-200/60 shadow-xs flex flex-col max-h-[calc(100vh-240px)] min-h-[420px]" data-status="review">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-indigo-200/70">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+              <h3 class="font-bold text-sm text-indigo-900">รอตรวจ / Review</h3>
+            </div>
+            <span id="count-review" class="px-2 py-0.5 text-xs font-semibold rounded-full bg-indigo-200/70 text-indigo-800">0</span>
+          </div>
+          <div class="cards-container flex-1 overflow-y-auto space-y-2.5 p-1 pr-1.5" id="column-review">
+            <!-- Cards rendered dynamically -->
+          </div>
+          <button class="btn-quick-add mt-2 w-full py-1.5 text-xs text-indigo-700/70 hover:text-indigo-800 hover:bg-indigo-100/60 rounded-xl border border-dashed border-indigo-300 transition flex items-center justify-center gap-1" data-status="review">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i> เพิ่มงานในคอลัมน์นี้
+          </button>
+        </div>
+
+        <!-- Column 4: Done -->
+        <div class="kanban-column bg-emerald-50/50 rounded-2xl p-3 border border-emerald-200/60 shadow-xs flex flex-col max-h-[calc(100vh-240px)] min-h-[420px]" data-status="done">
+          <div class="flex items-center justify-between pb-2 mb-2 border-b border-emerald-200/70">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+              <h3 class="font-bold text-sm text-emerald-900">เสร็จสิ้น (Done)</h3>
+            </div>
+            <span id="count-done" class="px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-200/70 text-emerald-800">0</span>
+          </div>
+          <div class="cards-container flex-1 overflow-y-auto space-y-2.5 p-1 pr-1.5" id="column-done">
+            <!-- Cards rendered dynamically -->
+          </div>
+          <button class="btn-quick-add mt-2 w-full py-1.5 text-xs text-emerald-700/70 hover:text-emerald-800 hover:bg-emerald-100/60 rounded-xl border border-dashed border-emerald-300 transition flex items-center justify-center gap-1" data-status="done">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i> เพิ่มงานในคอลัมน์นี้
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ============================================== -->
+    <!-- SECTION 3: TABLE VIEW (Optional Alternative View) -->
+    <!-- ============================================== -->
+    <section id="table-section" class="mt-4 hidden bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-xs sm:text-sm">
+          <thead>
+            <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+              <th class="py-3 px-4">ชื่องาน & รายละเอียด</th>
+              <th class="py-3 px-4">ผู้รับผิดชอบ</th>
+              <th class="py-3 px-4">วันที่เริ่มต้น</th>
+              <th class="py-3 px-4">กำหนดส่ง (Deadline)</th>
+              <th class="py-3 px-4">ระดับความสำคัญ</th>
+              <th class="py-3 px-4">สถานะ</th>
+              <th class="py-3 px-4 text-center">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="table-rows" class="divide-y divide-slate-100 text-slate-700">
+            <!-- Rendered by JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============================================== -->
+  <!-- MODAL: CREATE / EDIT TASK -->
+  <!-- ============================================== -->
+  <div id="modal-task" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs hidden">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden animate-scale-up">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+            <i data-lucide="edit-3" class="w-4 h-4"></i>
+          </div>
+          <h3 id="modal-task-title" class="text-base font-bold text-slate-900">สร้างงานใหม่ (New Task)</h3>
+        </div>
+        <button id="btn-close-task-modal" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body / Form -->
+      <form id="form-task" class="p-6 space-y-4">
+        <input type="hidden" id="task-id">
+
+        <!-- Task Name -->
+        <div>
+          <label for="task-name" class="block text-xs font-semibold text-slate-700 mb-1">
+            ชื่องาน (Task Title) <span class="text-rose-500">*</span>
+          </label>
+          <input type="text" id="task-name" required placeholder="ระบุชื่องานที่ต้องทำ เช่น ออกแบบหน้าแดชบอร์ด..." class="w-full text-sm bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+
+        <!-- Task Description -->
+        <div>
+          <label for="task-desc" class="block text-xs font-semibold text-slate-700 mb-1">
+            รายละเอียดงาน (Description)
+          </label>
+          <textarea id="task-desc" rows="3" placeholder="ระบุขอบเขตงาน รายละเอียด หรือสิ่งที่ต้องส่งมอบ..." class="w-full text-sm bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+        </div>
+
+        <!-- Row: Assignee & Priority -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="task-assignee" class="block text-xs font-semibold text-slate-700 mb-1">
+              ผู้รับผิดชอบ (Assignee) <span class="text-rose-500">*</span>
+            </label>
+            <select id="task-assignee" required class="w-full text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <!-- Options injected -->
+            </select>
+          </div>
+          <div>
+            <label for="task-priority" class="block text-xs font-semibold text-slate-700 mb-1">
+              ระดับความสำคัญ (Priority)
+            </label>
+            <select id="task-priority" class="w-full text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+              <option value="medium">🟡 ปานกลาง (Medium)</option>
+              <option value="high">🟠 สูง (High)</option>
+              <option value="urgent">🔴 ด่วนมาก (Urgent)</option>
+              <option value="low">🟢 ทั่วไป (Low)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row: Start Date & Deadline -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="task-date" class="block text-xs font-semibold text-slate-700 mb-1">
+              วันที่เริ่ม / วันที่สร้าง (Date) <span class="text-rose-500">*</span>
+            </label>
+            <input type="date" id="task-date" required class="w-full text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+          <div>
+            <label for="task-deadline" class="block text-xs font-semibold text-slate-700 mb-1">
+              กำหนดส่ง (Deadline) <span class="text-rose-500">*</span>
+            </label>
+            <input type="date" id="task-deadline" required class="w-full text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        </div>
+
+        <!-- Status -->
+        <div>
+          <label for="task-status" class="block text-xs font-semibold text-slate-700 mb-1">
+            สถานะงาน (Status)
+          </label>
+          <select id="task-status" class="w-full text-sm bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="todo">รอดำเนินการ (To Do)</option>
+            <option value="in_progress">กำลังทำ (In Progress)</option>
+            <option value="review">รอตรวจ (Review)</option>
+            <option value="done">เสร็จสิ้น (Done)</option>
+          </select>
+        </div>
+
+        <!-- Modal Footer Actions -->
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+          <button type="button" id="btn-delete-task" class="text-rose-600 hover:text-rose-800 text-xs font-semibold flex items-center gap-1 hidden">
+            <i data-lucide="trash-2" class="w-4 h-4"></i> ลบงานนี้
+          </button>
+          <div class="flex items-center gap-2 ml-auto">
+            <button type="button" id="btn-cancel-task" class="px-4 py-2 text-xs sm:text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-xl transition">
+              ยกเลิก
+            </button>
+            <button type="submit" class="px-5 py-2 text-xs sm:text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-xs transition">
+              บันทึกงาน
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: TEAM MEMBERS MANAGEMENT -->
+  <!-- ============================================== -->
+  <div id="modal-members" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs hidden">
+    <div class="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-md overflow-hidden">
+      <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+          <i data-lucide="users" class="w-5 h-5 text-indigo-600"></i> จัดการรายชื่อสมาชิกทีม
+        </h3>
+        <button id="btn-close-members-modal" class="text-slate-400 hover:text-slate-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 space-y-4">
+        <!-- Add New Member Form -->
+        <form id="form-add-member" class="flex gap-2">
+          <input type="text" id="new-member-name" required placeholder="ชื่อสมาชิก เช่น นภา วงศ์ดี" class="flex-1 text-sm border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <input type="text" id="new-member-role" placeholder="ตำแหน่ง เช่น QA Tester" class="w-1/3 text-sm border border-slate-300 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-xl text-sm font-semibold">
+            เพิ่ม
+          </button>
+        </form>
+
+        <!-- Current Members List -->
+        <div>
+          <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">สมาชิกในระบบปัจจุบัน</h4>
+          <div id="members-list-container" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white text-xs sm:text-sm px-4 py-3 rounded-xl shadow-lg border border-slate-800 flex items-center gap-2 transform transition-all duration-300 translate-y-20 opacity-0 pointer-events-none">
+    <i data-lucide="check" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-message">บันทึกข้อมูลเรียบร้อยแล้ว</span>
+  </div>
+
+  <!-- Scripts -->
+  <script src="app.js"></script>
+</body>
+</html>
